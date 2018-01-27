@@ -88,7 +88,7 @@ class QLearner(ABCMeta):
             a_opt = a_opt[0]
 
             # generates random action with probability epsilon
-            if np.random.rand(1) < e:
+            if np.random.rand(1) < self.epsilon:
                 i = np.random.randint(0,len(actions),size=1)[0]
                 a_opt = actions[i]
 
