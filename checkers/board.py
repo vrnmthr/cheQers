@@ -126,9 +126,11 @@ class Board:
 
     ##### PIECE MANIPULATION #####
     def get_piece_at(self, coords):
+        coords = [int(coords[0]), int(coords[1])]
         return self.board_arr[coords[1]][coords[0]]
 
     def set_piece_at(self, coords, value):
+        coords = [int(coords[0]), int(coords[1])]
         self.board_arr[coords[1]][coords[0]] = value
 
     def remove_piece(self, coords):
