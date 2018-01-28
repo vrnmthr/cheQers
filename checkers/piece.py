@@ -28,7 +28,7 @@ class Piece(Enum):
 
     @staticmethod
     def set_king(board, coords):
-        board.set_piece_at(coords, Piece.WHITE_K if Piece.is_white(coords) else Piece.BLACK_K)
+        board.set_piece_at(coords, Piece.WHITE_K if Piece.is_white(board, coords) else Piece.BLACK_K)
 
     @staticmethod
     def is_king(board, coords):
@@ -54,7 +54,7 @@ class Piece(Enum):
 
         moves = []
 
-        # use kingess to determine number of rows to check
+        # use kingness to determine number of rows to check
         rows_to_check = 2 if Piece.is_king(board, coords) else 1
         piece_x, piece_y = coords
         is_white = Piece.is_white(board, coords)
@@ -66,8 +66,6 @@ class Piece(Enum):
             return []
 
         # change y endpoints based on color=direction of movement
-        starting_y = 0
-        y_increment = 0
         if is_white:
             # if it's white, we move from further down the board backwards to possible king position
             starting_y = piece_y + 1
@@ -86,7 +84,8 @@ class Piece(Enum):
                 # increment y if we need to (this will have no effect if we only run one iteration)
                 y += y_increment
 
-                # check for going off end of board, in which case just skip this iteration (we may do this twice if at a corner)
+                # check for going off end of board, in which case just skip this iteration
+                # (we may do this twice if at a corner)
                 if board.is_over_edge(x, y):
                     continue
 
@@ -95,16 +94,16 @@ class Piece(Enum):
                     # this is not jump move in any case, and is always the first move
                     moves.append(Move([piece_x, piece_y], [x, y], None, False))
 
-        # after we've checked all normal moves, look for and add all possible jumps (recusively as well - I mean ALL jumps)
-        possible_jumps = Piece.get_all_possible_jumps(board, coords, \
-            None, is_white, is_king)
+        # after we've checked all normal moves, look for and add all possible jumps
+        # (recursively as well - I mean ALL jumps)
+        possible_jumps = Piece.get_all_possible_jumps(board, coords, None, is_white, is_king)
         moves.extend(possible_jumps)
         return moves
 
     @staticmethod
     def get_all_possible_jumps(board, coords, preceding_move, is_white, is_king):
         """  Finds all jumping moves originating from this piece.
-        Does this recursivly; for each move a new imaginary piece will be generated,
+        Does this recursively; for each move a new imaginary piece will be generated,
         and this function will then be called on that piece to find all possible subsequent moves.
 
         @param board The board to work with - assumed to be flipped to correspond to this piece's color.
@@ -116,7 +115,7 @@ class Piece(Enum):
 
         moves = []
 
-        # use kingess to determine number of rows to check
+        # use kingness to determine number of rows to check
         rows_to_check = 2 if is_king else 1
         piece_x, piece_y = coords
 
@@ -126,8 +125,6 @@ class Piece(Enum):
             return []
 
         # change y endpoints based on color=direction of movement
-        starting_y = 0
-        y_increment = 0
         if is_white:
             # if it's white, we move from further down the board backwards to possible king position
             starting_y = piece_y + 2
@@ -146,7 +143,8 @@ class Piece(Enum):
                 # increment y if we need to (this will have no effect if we only run one iteration)
                 y += y_increment
 
-                # check for going off end of board, in which case just skip this iteration (we may do this twice if at a corner)
+                # check for going off end of board, in which case just skip this iteration
+                # (we may do this twice if at a corner)
                 if board.is_over_edge(x, y):
                     continue
 
@@ -156,7 +154,8 @@ class Piece(Enum):
                     and y == preceding_move.get_start()[1]:
                     continue
 
-                # test if there is a different-colored piece between us (at the average of our position) and the starting point
+                # test if there is a different-colored piece between us
+                # (at the average of our position) and the starting point
                 # AND that there's no piece in the planned landing space (meaning we can possible jump there)
                 between_piece = board.get_piece_at([(piece_x + x)/2 , (piece_y + y)/2])
                 if between_piece != Piece.NONE \
@@ -170,8 +169,8 @@ class Piece(Enum):
 
                     # after jumping, create an imaginary piece as if it was there to look for more jumps
                     imaginary_piece = [x, y]
-                    # find possible subsequent moves recusivly
-                    subsequent_moves = Piece.get_all_possible_jumps(board, \
+                    # find possible subsequent moves recursively
+                    subsequent_moves = Piece.get_all_possible_jumps(board,
                         imaginary_piece, jumping_move, is_white, is_king)
 
                     # add these moves to our list if they exist, otherwise just move on to other possibilities
