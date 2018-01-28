@@ -10,7 +10,7 @@ class CheQer:
     Abstract base class defining generalized Q-learning algorithm
     """
 
-    def __init__(self, Lambda, epsilon, dim, alpha = 0.1):
+    def __init__(self, Lambda, epsilon, dims, alpha = 0.1):
         """
         Lambda = discount factor
         alpha = learning rate
@@ -23,18 +23,29 @@ class CheQer:
         self.Lambda = Lambda
         self.alpha = alpha
         self.epsilon = epsilon
-        self.dim = dim
+        self.dims = dims
 
         # sets up the network
         tf.reset_default_graph()
 
         # first layer of inputs
-        self.inputs1 = tf.placeholder(tf.float32, shape=[1, dim])
+        self.inputs1 = tf.placeholder(tf.float32, shape=[1, dims[0]])
+
+        # store max index of dims
+        dimlen = len(dims) - 1
+
         # weights for network
-        self.weights = tf.get_variable("weights", [dim, 1], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        self.weights = [None] * 10
+        for i in range(dimlen):
+            print(i)
+            self.weights[i] = tf.get_variable("weights" + str(i), [dims[i], dims[i+1]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        self.weights[dimlen] = tf.get_variable("weights" + str(dimlen), [dims[dimlen], 1], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+
         self.init = tf.global_variables_initializer()
-        # result of one layer of computation
-        self.Qout = tf.matmul(self.inputs1, self.weights)
+        # result of computation
+        self.Qout = tf.matmul(self.inputs1, self.weights[0])
+        for i in range(dimlen):
+            self.Qout = tf.matmul(self.Qout, self.weights[i+1])
 
         # result of next Q values used in Bellman update equation
         self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
@@ -87,8 +98,10 @@ class CheQer:
         state.shape = (1, 64)
 
         # Train our network using target and predicted Q values
-        _,_ = self.sess.run([self.updateModel,self.weights],
-            feed_dict={self.inputs1:state,self.nextQ:targetQ})
+        dimlen = len(self.dims) - 1
+        for i in range(dimlen):
+            _,_ = self.sess.run([self.updateModel,self.weights],
+                feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
     def find_optimal_move(self, board):
 
@@ -110,7 +123,7 @@ class CheQer:
             allQ[i] = self.sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
         # get index of best-scored move
-        a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval()[0]
+        a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval(session=self.sess)[0]
 
         return a_opt, allQ
 
@@ -164,7 +177,9 @@ class CheQer:
             elif rew == -.25:
                 maxQ1 = rew
             else:
-                maxQ1 = 0
+                maxQ1 = -1 * rew
+        else:
+            maxQ1 = reward
 
         self.train(state, reward, maxQ1)
 
