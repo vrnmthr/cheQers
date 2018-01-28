@@ -1,36 +1,44 @@
 #!/usr/bin/python
-from enum import Enum
-
-class Piece(Enum):
-    BLACK_K =   -2
-    BLACK =     -1
-    NONE =      0
-    WHITE =     1
-    WHITE_K =   2
+import numpy as np
+import copy
+from piece import Piece
 
 class Board:
-    def __init__(self, size):
+    """ A board, to be used as if always from the perspective of the white player
+        (you should call board.flip() in order to player as the other player) """
+
+    def __init__(self, size, board_arr=None, start_player_num=0):
         assert size == 8
         self.size = size
-        self.board_arr = []
-        # setup the board / starting positions
-        self.setup_board()
+        self.cur_player_num = start_player_num
+        if board_arr is not None:
+            assert board_arr.shape == (size, size)
+            self.board_arr = board_arr
+        else:
+            self.board_arr = np.zeros((self.size, self.size))
+            # setup the board / starting positions
+            self.setup_board()
+
+    def __copy__(self):
+        return Board(self.size, copy.copy(self.board_arr), self.cur_player_num)
+
+    def __deepcopy__(self, memodict={}):
+        return Board(self.size, copy.deepcopy(self.board_arr, memodict), self.cur_player_num)
 
     def setup_board(self):
         """ Fills the board with pieces in their starting positions.
             Adds WHITE pieces at the top to start (so white should move first)"""
-        self.board_arr = [[0 for x in range(w)] for y in range(h)]
-        for y in range(size):
-            for x in range(size):
+        for y in range(self.size):
+            for x in range(self.size):
                 if y < 3 and self.is_checkboard_space(x, y):
                     # add white pieces to the top (in a checkerboard pattern of black spaces - not on white spaces)
                     self.board_arr[y][x] = Piece.WHITE
 
-                elif y >= size - 3 and is_checkboard_space(x, y):
+                elif y >= self.size - 3 and self.is_checkboard_space(x, y):
                     # ... and black pieces to the bottom in the opposite pattern
                     self.board_arr[y][x] = Piece.BLACK
 
-    def apply_move(self, move):
+    def apply_white_move(self, move):
         """ Using the given move and piece, move the piece on the board and apply it to self board. """
         # NOTE: at self point, the starting position of the move (move.getStartingPosition) will not neccesarily
         # be equal to the piece's location, because jumping moves have no understanding of the root move
@@ -40,17 +48,72 @@ class Board:
         move_start = move.get_start()
         move_end = move.get_end()
 
-        # find any pieces we've jumped in the process, and remove them as well
+        # find any pieces we've jumped in the process, and remove them
         jumped_pieces = move.get_jumped_pieces(self)
-        if jumped_pieces != None:
-            # loop over all jumped pieces and remove them
-            for coords in jumped_pieces:
-                if coords != None: # TODO: why necessary?
-                    self.remove_piece(coords)
+        for coords in jumped_pieces:
+            self.remove_piece(coords)
 
         # and, move self piece (WE PRESUME that it's self piece) from its old spot (both on board and with the piece itself)
         self.move_piece(move_start, move_end)
-    }
+
+    def available_white_moves(self):
+        """ Returns a list of all move objects for all white pieces on the board """
+        moves = []
+        # TODO: could speed up by only doing checkboard spaces
+        for y in range(self.size):
+            for x in range(self.size):
+                coords = [x, y]
+                piece = self.get_piece_at(coords)
+                if piece != Piece.NONE and Piece.is_white_val(piece):
+                    moves.extend(Piece.get_all_possible_moves(self, coords))
+
+        return moves
+
+    def won(self):
+        return self.winner() == -1
+
+    def winner(self):
+        """ Returns the winner of the game (player 1 or 2),
+        0 for a stalemate, and -1 if the game is not finished """
+
+        movable_white_num = 0
+        movable_black_num = 0
+        for y in range(self.size):
+            for x in range(self.size):
+                # make sure the piece exists, and if so sum movable pieces for each color)
+                coords = [x, y]
+                if self.get_piece_at(coords) != Piece.NONE:
+                    # only consider piece if it has possible moves
+                    if len(Piece.get_all_possible_moves(self, coords)) > 0:
+                        if Piece.is_white(self, coords):
+                            movable_white_num += 1
+                        else:
+                            movable_black_num += 1
+
+        # determine if anyone won (or if no one had any moves left)
+        if movable_white_num + movable_black_num == 0:
+            return 0
+        elif movable_black_num == 0:
+            return 1
+        elif movable_white_num == 0:
+            return 2
+        else:
+            return -1
+
+    def set_white_player(self, player_num):
+        """ Sets the current "white" player by flipping the board if
+            the current board doesn't match the provided player
+            (note that the game starts with player 0 as white)"""
+        assert player_num >= 0 and player_num < 2
+        if self.cur_player_num % 2 != player_num:
+            self.flip()
+        self.cur_player_num = player_num
+
+    def flip(self):
+        """ Flips the board coordinates so that the other pieces are on top, AND
+            converts all black players to white to completely swap perspective"""
+        self.board_arr = np.rot90(self.board_arr, 2)
+        self.board_arr *= -1  # converts all black to white + v.v.
 
     ##### PIECE MANIPULATION #####
     def get_piece_at(self, coords):
@@ -58,9 +121,6 @@ class Board:
 
     def set_piece_at(self, coords, value):
         self.board_arr[coords[1]][coords[0]] = value
-
-    def is_white(self, coords):
-        return self.get_piece_at(coords) > 0
 
     def remove_piece(self, coords):
         """ Removes the piece at the given coords from the board. """
@@ -72,60 +132,11 @@ class Board:
         assert piece != Piece.NONE
         self.set_piece_at(end, piece)
         self.set_piece_at(start, Piece.NONE)
-        self.check_if_should_be_king(end)
-
-    def set_king(self, coords):
-        self.set_piece_at(coords, is_white(piece) ? Piece.WHITE_K : Piece.BLACK_K)
-
-    def check_if_should_be_king(self, coords):
-        """ Makes the piece at the given location if it should be right now """
-        white = is_white(coords)
-        if (white and coords[1] == board.size - 1) or (!white and coords[1] == 0)
-            self.set_king(coords)
+        Piece.check_if_should_be_king(self, end)
 
     ##### END PIECE MANIPULATION #####
-    #
-    # /**
-    #  * Get's the Piece object at self location, but using a single number,
-    #  * which progresses from 0 at the top left to the square of the size at the bottom right
-    #  * @param position self number, zero indexed at top left
-    #  * @return The Piece here. (may be null).
-    #  */
-    # public Piece get_piece_at(int position)
-    # {
-    #     int[] coords = getCoordinatesFromPosition(position); # convert position to coordinates and use that
-    #     return self.get_piece_at(coords[0], coords[1])
-    # }
 
-    # /**
-    #  * Converts a single position value to x and y coordinates.
-    #  * @param position The single position value, zero indexed at top left.
-    #  * @return A two part int array where [0] is the x coordinate and [1] is the y.
-    #  */
-    # public int[] getCoordinatesFromPosition(int position)
-    # {
-    #     int[] coords = new int[2]
-    #
-    #     # get and use x and y by finding low and high frequency categories
-    #     coords[0] = position % self.size; # x is low frequency
-    #     coords[1] = position / self.size; # y is high frequency
-    #     return coords
-    # }
-    #
-    # /**
-    #  * Converts from x and y coordinates to a single position value,
-    #  * which progresses from 0 at the top left to the square of the size minus one at the bottom right
-    #  * @param x The x coordinate
-    #  * @param y The y coordinate
-    #  * @return The single position value.
-    #  */
-    # public int getPositionFromCoordinates(int x, int y)
-    # {
-    #     # sum all row for y, and add low frequency x
-    #     return self.size*y + x
-    # }
-
-    def is_checkboard_space(int x, int y):
+    def is_checkboard_space(self, x, y):
         """ Returns true if the given position on the board represents
             a "BLACK" square on the checkboard.
             (The checkerboard in self case starts with a "white"
@@ -133,47 +144,14 @@ class Board:
         # self is a checkerboard space if x is even in an even row or x is odd in an odd row
         return x % 2 == y % 2
 
-    def is_over_edge(x, y):
+    def is_over_edge(self, x, y):
         """ Returns true if the given coordinates are over the edge the board """
         return x < 0 or x >= self.size or y < 0 or y >= self.size
 
-    # /**
-    #  * @return Returns true if the given position is over the edge the board
-    #  * @param position The given 0-indexed position value
-    #  */
-    # public boolean is_over_edge(int position)
-    # {
-    #      int[] coords = getCoordinatesFromPosition(position); # convert position to coordinates and use that
-    #     return self.is_over_edge(coords[0], coords[1])
-    # }
-
-    def get_flipped_board():
-        # TODO:
-        """ Flips the board coordinates so that the other pieces are on top, etc. """
-        # copy self Board, as the basis for a new, flipped one
-        newBoard = Board(self)
-
-        # switch every piece to the one in the opposite corner
-        for (int y = 0; y < newBoard.size; y++)
-        {
-            for (int x = 0; x < newBoard.size; x++)
-            {
-                # get piece in opposite corner...
-                Piece oldPiece = self.get_piece_at(self.size - 1 - x, self.size - 1 - y)
-
-                if (oldPiece != null)
-                {
-                    # ...and transfer color and position to a new generated piece if it exists
-                    newBoard.setValueAt(x, y, new Piece(x, y, oldPiece.isWhite))
-                }
-                else
-                {
-                    # otherwise just add an empty space
-                    newBoard.setValueAt(x, y, null)
-                }
-            }
-        }
-
-        return newBoard
-    }
-}
+    def __str__(self):
+        buf = []
+        for y in range(self.size):
+            for x in range(self.size):
+                buf.append(Piece.to_str(self.get_piece_at([x, y])))
+            buf.append("\n")
+        return "".join(buf)
