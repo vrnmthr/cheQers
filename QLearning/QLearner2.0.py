@@ -2,9 +2,9 @@
 
 import tensorflow as tf
 import numpy as np
-from abc import ABCMeta, abstractmethod
 
-class QLearner(ABCMeta):
+
+class QLearner:
     """
     Abstract base class defining generalized Q-learning algorithm
     """
@@ -31,34 +31,13 @@ class QLearner(ABCMeta):
         self.weights = tf.get_variable("weights", [dim, 1],
             dtype=tf.float32, initializer=tf.random_uniform_initializer)
         # result of one layer of computation
-        self.Qout = tf.matmult(self.inputs1, self.weights)
+        self.Qout = tf.matmul(self.inputs1, self.weights)
 
         # result of next Q values used in Bellman update equation
         self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
-        self.loss = tf.reduce_sum(tf.square(nextQ - Qout))
+        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
         self.trainer = tf.train.GradientDescentOptimizer(alpha)
         self.updateModel = self.trainer.minimize(self.loss)
-
-
-    @abstractmethod
-    def reward(self, parameter_list):
-        raise NotImplementedError
-
-    @staticmethod
-    def transition(state, action):
-        raise NotImplementedError
-
-    @staticmethod
-    def loss(actual, expected):
-        pass
-
-    def Q(self, state):
-        """
-        Returns utilities as an np array of (action, utility)
-        couples. Calculated using backing neural net.
-        """
-        #tensorflow things here
-        pass
 
     @staticmethod
     def simulate(board, a_opt):
@@ -176,3 +155,7 @@ class QLearner(ABCMeta):
                 feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
             return a_opt
+
+
+a = QLearner(0.7, .1, 64)
+print("weights: ", str(a.weights))
