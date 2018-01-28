@@ -1,8 +1,8 @@
 #!/usr/bin/python
-from enum import Enum
+from enum import IntEnum
 from move import Move
 
-class Piece(Enum):
+class Piece(IntEnum):
     BLACK_K =   -2
     BLACK =     -1
     NONE =      0
@@ -157,7 +157,7 @@ class Piece(Enum):
                 # test if there is a different-colored piece between us
                 # (at the average of our position) and the starting point
                 # AND that there's no piece in the planned landing space (meaning we can possible jump there)
-                between_piece = board.get_piece_at([(piece_x + x)/2 , (piece_y + y)/2])
+                between_piece = board.get_piece_at([int((piece_x + x)/2) , int((piece_y + y)/2)])
                 if between_piece != Piece.NONE \
                     and Piece.is_white_val(between_piece) != is_white \
                     and board.get_piece_at([x, y]) == Piece.NONE:

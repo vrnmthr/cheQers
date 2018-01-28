@@ -2,9 +2,10 @@
 
 import tensorflow as tf
 import numpy as np
+import copy
 
 
-class QLearner:
+class CheQer:
     """
     Abstract base class defining generalized Q-learning algorithm
     """
@@ -23,13 +24,12 @@ class QLearner:
 
         # sets up the network
         tf.reset_default_graph()
-        self.init = tf.initialize_all_variables()
 
         # first layer of inputs
         self.inputs1 = tf.placeholder(tf.float32, shape=[1, dim])
         # weights for network
-        self.weights = tf.get_variable("weights", [dim, 1],
-            dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        self.weights = tf.get_variable("weights", [dim, 1], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        self.init = tf.global_variables_initializer()
         # result of one layer of computation
         self.Qout = tf.matmul(self.inputs1, self.weights)
 
@@ -52,16 +52,16 @@ class QLearner:
         reward = 0
 
         board.apply_white_move(a_opt)
-        if board.current_player_won() == 1:
+        if board.cur_player_won() == 1:
             reward = 1
-        elif board.current_player_won() == 2:
+        elif board.cur_player_won() == 2:
             reward = -1
-        elif board.current_player_won() == 0:
+        elif board.cur_player_won() == 0:
             reward = -.25
 
         return board, reward
 
-    def step(self, board):
+    def step(self, board, possible_moves):
         """
         Takes as input a state of the current problem
         and a set of actions. Also contains a transition function that
@@ -80,15 +80,19 @@ class QLearner:
             actions = board.available_white_moves()
 
             # initialize array of scores of all moves
-            allQ = np.array()
+            allQ = np.zeros([len(actions)])
 
             # find scores of all moves
             for action in actions:
                 # calculates board state after move
-                future_state = board.__deepcopy__().apply_white_move(action).board_arr
+                future_state = copy.deepcopy(board)
+                future_state.apply_white_move(action)
+                future_state = future_state.board_arr
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
+                future_state.shape = (1, 64)
+                print(future_state.shape)
                 allQ = np.concatenate(allQ, sess.run([self.Qout],
                                                      feed_dict={self.inputs1: future_state}))
 
@@ -100,7 +104,7 @@ class QLearner:
                 a_opt = np.random.randint(0,len(actions),size=1)[0]
 
             # get new state and reward by executing preferred action
-            board, reward = simulate(board, a_opt)
+            board, reward = simulate(board, actions[a_opt])
 
             # switch the perspective to simulate the opponent's move
             board.set_white_player((board.cur_player_num+1) % 2)
@@ -112,7 +116,7 @@ class QLearner:
             # find scores of all opponent moves
             for action in op_actions:
                 # calculates board state after opponent move
-                op_state = board.__deepcopy__().apply_white_move(action).board_arr
+                op_state = copy.deepcopy(board).apply_white_move(action).board_arr
 
                 # calculates the value of op_q in TF (using the
                 # inputs defined in feed_dict) and places it in op_q
@@ -134,7 +138,7 @@ class QLearner:
             # find scores of all moves
             for action in predic_actions:
                 # calculates board state after move
-                predic_state = board.__deepcopy__().apply_white_move(action).board_arr
+                predic_state = copy.deepcopy(board).apply_white_move(action).board_arr
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
@@ -154,8 +158,4 @@ class QLearner:
             _,_ = sess.run([self.updateModel,self.W],
                 feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
-            return a_opt
-
-
-a = QLearner(0.7, .1, 64)
-print("weights: ", str(a.weights))
+            return actions[a_opt]
