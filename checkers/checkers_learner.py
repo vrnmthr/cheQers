@@ -18,8 +18,8 @@ class CheQer:
         epsilon = chance of not following greedy action
         """
         self.SAVE_STEP_NUM = 100  # modulus of steps to save
-        self.SAVE_FILE = "./models/checkers-model.ckpt"
-        self.resume_step = 500  # SET TO THE NEWEST MODEL YOU HAVE (0 for just starting)
+        self.SAVE_DIREC = "./models/"
+        self.SAVE_FILE = self.SAVE_DIREC + "checkers-model.ckpt"
         self.Lambda = Lambda
         self.alpha = alpha
         self.epsilon = epsilon
@@ -42,19 +42,17 @@ class CheQer:
         self.trainer = tf.train.GradientDescentOptimizer(alpha)
         self.updateModel = self.trainer.minimize(self.loss)
 
-        self.train_step = self.resume_step
+        self.train_step = 0
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
         # restore saved graph + variables
-        if self.resume_step > 0:
-            file = "./models/checkers-model.ckpt-%d" % self.resume_step
-            print("Loading model from %s" % file)
-            self.saver.restore(self.sess, file)
-
+        file = tf.train.latest_checkpoint(self.SAVE_DIREC)
+        print("Loading model from %s" % file)
+        self.saver.restore(self.sess, file)
 
     def __del__(self):
-        print("Saving model...")
-        self.saver.save(self.sess, self.SAVE_FILE, global_step=self.train_step)
+        print("Saving model to %s" % self.SAVE_FILE)
+        self.saver.save(self.sess, self.SAVE_FILE)
         self.sess.close()
 
     @staticmethod
@@ -191,7 +189,7 @@ class CheQer:
 
         # save some subset of networks
         if self.train_step % self.SAVE_STEP_NUM == 0:
-            self.saver.save(self.sess, self.SAVE_FILE, global_step=self.train_step)
+            self.saver.save(self.sess, self.SAVE_FILE)
         self.train_step += 1
 
         return a_opt
