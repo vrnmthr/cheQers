@@ -56,6 +56,6 @@ class Move:
     def __str__(self):
         # build up chain from end
         if self.preceding_move is not None:
-            return "%s -> %s" % (str(self.preceding_move), self.end)
+            return "%s ^  %s" % (str(self.preceding_move), self.end)
         else:
-            return "%s -> %s" % (str(self.start), str(self.end))
+            return "%s %s %s" % (str(self.start), "^ " if self.is_jump else "->", str(self.end))

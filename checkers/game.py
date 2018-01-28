@@ -13,7 +13,7 @@ class Game:
     def run(self):
         """ Returns which player won the game (1 or 2), or 0 if a stalemate """
         player_num = 0
-        while self.board.won():
+        while not self.board.won():
             self.get_player_move(player_num)
             # alternate players
             player_num = (player_num + 1) % 2
@@ -25,9 +25,8 @@ class Game:
         self.board.set_white_player(player_num)
         while True:
             # do a deep copy to allow for user manipulation
-            move_i = self.players[player_num](copy.deepcopy(self.board))
-
             available_moves = self.board.available_white_moves()
+            move_i = self.players[player_num](copy.deepcopy(self.board), available_moves)
 
             if 0 <= move_i or move_i < len(available_moves):
                 self.board.apply_white_move(available_moves[move_i])

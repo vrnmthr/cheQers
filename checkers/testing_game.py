@@ -5,7 +5,7 @@ from human_player import make_human_player
 from random_player import make_random_player
 
 player1 = make_random_player("1") #make_human_player("1")
-player2 = make_random_player("2") #make_human_player("2")
+player2 = make_human_player("2")
 
 for i in range(10):
     game = Game(player1, player2)
