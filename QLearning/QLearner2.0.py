@@ -9,19 +9,17 @@ class QLearner(ABCMeta):
     Abstract base class defining generalized Q-learning algorithm
     """
 
-    def __init__(self, Lambda, epsilon, dim, acts, alpha = 0.1):
+    def __init__(self, Lambda, epsilon, dim, alpha = 0.1):
         """
         Lambda = discount factor
         alpha = learning rate
         dim = dimension of vector describing state
         epsilon = chance of not following greedy action
-        acts = number of actions
         """
         self.Lambda = Lambda
         self.alpha = alpha
         self.epsilon = epsilon
         self.dim = dim
-        self.acts = acts
 
         # sets up the network
         tf.reset_default_graph()
@@ -30,15 +28,13 @@ class QLearner(ABCMeta):
         # first layer of inputs
         self.inputs1 = tf.placeholder(tf.float32, shape=[1, dim])
         # weights for network
-        self.weights = tf.get_variable("weights", [dim, acts],
+        self.weights = tf.get_variable("weights", [dim, 1],
             dtype=tf.float32, initializer=tf.random_uniform_initializer)
         # result of one layer of computation
         self.Qout = tf.matmult(self.inputs1, self.weights)
-        # index of greatest value => index of optimal action
-        self.result = tf.argmax(self.Qout)
 
         # result of next Q values used in Bellman update equation
-        self.nextQ = tf.placeholder(tf.float32,shape=[1,acts])
+        self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
         self.loss = tf.reduce_sum(tf.square(nextQ - Qout))
         self.trainer = tf.train.GradientDescentOptimizer(alpha)
         self.updateModel = self.trainer.minimize(self.loss)
@@ -64,7 +60,7 @@ class QLearner(ABCMeta):
         #tensorflow things here
         pass
 
-    def step(self, state, actions, transition):
+    def step(self, board, apply_action):
         """
         Takes as input a state of the current problem
         and a set of actions. Also contains a transition function that
@@ -78,31 +74,63 @@ class QLearner(ABCMeta):
 
             sess.run(self.init)
 
-            # calculates the values of result and Qout in TF, using the
-            # inputs defined in feed_dict and filling them in a, allQ
-            a_opt, allQ = sess.run([self.result,self.Qout],
-                feed_dict={self.inputs1:state})
+            state = board.state
+            actions = board.possible_moves()
 
-            # unpacks tensor a_opt
-            a_opt = a_opt[0]
+            a_opt = actions[0]
 
             # generates random action with probability epsilon
             if np.random.rand(1) < self.epsilon:
                 i = np.random.randint(0,len(actions),size=1)[0]
                 a_opt = actions[i]
+            else:
+                # initialize array of scores of all moves
+                allQ = np.array()
 
-            # TO-DO: THE WAY THIS CURRENTLY RUNS IS THAT A IS A ARRAY
-            # OF SIZE 1 WHERE THE SINGLE ELEMENT IS THE INDEX OF THE ELEMENT
-            # IN ALLQ THAT HAS THE HIGHEST UTILITY => MAKES THE ASSUMPTION
-            # THAT ACTIONS ARE REPRESENTED AS INTEGERS. THIS WILL
-            # CURRENTLY ALL BREAK
+                # find scores of all moves
+                for action in actions:
+                    # calculates board state after move
+                    future_state, _ = apply_action(state, action)
+
+                    # calculates the value of Qout in TF (using the
+                    # inputs defined in feed_dict) and places it in allQ
+                    allQ = np.concatenate(allQ, sess.run([self.Qout],
+                        feed_dict={self.inputs1:future_state}))
+
+                # get index of best-scored move
+                a_opt = tf.argmax(allQ)
+                # unpacks tensor a_opt
+                a_opt = actions(a_opt[0])
 
             # TODO:
             # can't make two consecutive moves, the opponent would have to
             # make a move in between (maybe consider all opponent moves?)
 
             # get new state and reward by executing preferred action
-            new_state, reward = transition(state, a_opt)
+            new_state, reward = apply_action(state, a_opt)
+
+
+
+
+            # initialize array of scores of all moves
+            allQ = np.array()
+
+            # find scores of all moves
+            for action in actions:
+                # calculates board state after move
+                future_state, _ = apply_action(new_state, action)
+
+                # calculates the value of Qout in TF (using the
+                # inputs defined in feed_dict) and places it in allQ
+                allQ = np.concatenate(allQ, sess.run([self.Qout],
+                                                     feed_dict={self.inputs1: future_state}))
+
+            # get index of best-scored move
+            a_opt = tf.argmax(allQ)
+            # unpacks tensor a_opt
+            a_opt = actions(a_opt[0])
+
+
 
             # Obtain Q1 values through network
             Q1 = sess.run(self.Qout,feed_dict={self.inputs1:new_state})
