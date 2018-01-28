@@ -45,7 +45,7 @@ class CheQer:
         self.train_step = 0
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
-        # restore saved graph + variables
+        # restore saved graph + variables - https://www.tensorflow.org/programmers_guide/saved_model
         file = tf.train.latest_checkpoint(self.SAVE_DIREC)
         if file is not None:
             print("Loading model from %s" % file)
