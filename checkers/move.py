@@ -2,6 +2,7 @@
 
 class Move:
     """ A single hop (the last known hop) of a linked list of moves and jumps. """
+
     def __init__(self, last_hop, end, preceding_move, is_jump):
         self.last_hop = last_hop
         self.end = end
@@ -38,8 +39,8 @@ class Move:
         if self.is_jump:
             # the piece this move is jumping should be between the start
             # and end of this move (the average of those two positions)
-            piece_x = (self.last_hop[0] + self.end[0]) / 2
-            piece_y = (self.last_hop[1] + self.end[1]) / 2
+            piece_x = int((self.last_hop[0] + self.end[0]) / 2)
+            piece_y = int((self.last_hop[1] + self.end[1]) / 2)
 
             # add this most recent jump...
             pieces.append([piece_x, piece_y])
@@ -49,7 +50,7 @@ class Move:
                 prev_jumped = self.preceding_move.get_jumped_pieces(board)
                 pieces.extend(prev_jumped)
 
-            # something is wrong (a preceding move isn't a jump) if this returns null, so let the error be thrown
+                # something is wrong (a preceding move isn't a jump) if this returns null, so let the error be thrown
 
         return pieces
 
