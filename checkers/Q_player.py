@@ -8,7 +8,7 @@ train = True
 player1 = checkers_ai.step if train else make_human_player("Human")
 player2 = checkers_ai.step
 
-for i in range(2):
+for i in range(1000000):
     try:
         print("Winner of game ", i, ": ", Game(player1, player2).run())
         checkers_ai.print_info()

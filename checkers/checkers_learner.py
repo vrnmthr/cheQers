@@ -110,7 +110,7 @@ class CheQer:
             allQ[i] = self.sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
         # get index of best-scored move
-        a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval()[0]
+        a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval(session=self.sess)[0]
 
         return a_opt, allQ
 
@@ -138,6 +138,7 @@ class CheQer:
         # get new state and reward by executing preferred action
         board, reward = self.simulate(board, actions[a_opt])
 
+        maxQ1 = 0
         if not reward:
             # switch the perspective to simulate the opponent's move
             board.set_white_player((board.cur_white_player+1) % 2)
