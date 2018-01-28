@@ -105,4 +105,4 @@ venv.bak/
 
 # Custom
 .idea
-checkers/models
+checkers/models/*

@@ -47,8 +47,9 @@ class CheQer:
         self.saver = tf.train.Saver()
         # restore saved graph + variables
         file = tf.train.latest_checkpoint(self.SAVE_DIREC)
-        print("Loading model from %s" % file)
-        self.saver.restore(self.sess, file)
+        if file is not None:
+            print("Loading model from %s" % file)
+            self.saver.restore(self.sess, file)
 
     def __del__(self):
         print("Saving model to %s" % self.SAVE_FILE)
