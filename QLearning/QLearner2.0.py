@@ -60,8 +60,8 @@ class QLearner(ABCMeta):
         #tensorflow things here
         pass
 
-
-    def simulate(self, board, a_opt):
+    @staticmethod
+    def simulate(board, a_opt):
         """
         Calculates reward, applies chosen move to board, then returns
         board.
@@ -96,53 +96,56 @@ class QLearner(ABCMeta):
 
             sess.run(self.init)
 
+            # Store the "base" state before board gets modified
             state = board.board_arr
             actions = board.available_white_moves()
 
-            a_opt = actions[0]
+            # initialize array of scores of all moves
+            allQ = np.array()
+
+            # find scores of all moves
+            for action in actions:
+                # calculates board state after move
+                future_state = board.__deepcopy__().apply_white_move(action).board_arr
+
+                # calculates the value of Qout in TF (using the
+                # inputs defined in feed_dict) and places it in allQ
+                allQ = np.concatenate(allQ, sess.run([self.Qout],
+                                                     feed_dict={self.inputs1: future_state}))
+
+            # get index of best-scored move
+            a_opt = tf.argmax(allQ)[0]
 
             # generates random action with probability epsilon
             if np.random.rand(1) < self.epsilon:
                 a_opt = np.random.randint(0,len(actions),size=1)[0]
-            else:
-                # initialize array of scores of all moves
-                allQ = np.array()
-
-                # find scores of all moves
-                for action in actions:
-                    # calculates board state after move
-                    future_state = board.__deepcopy__().apply_white_move(action).board_arr
-
-                    # calculates the value of Qout in TF (using the
-                    # inputs defined in feed_dict) and places it in allQ
-                    allQ = np.concatenate(allQ, sess.run([self.Qout],
-                        feed_dict={self.inputs1:future_state}))
-
-                # get index of best-scored move
-                a_opt = tf.argmax(allQ)[0]
 
             # get new state and reward by executing preferred action
             board, reward = simulate(board, a_opt)
 
-            board.set_white_player((board.cur_player_num+1)%2)
+            # switch the perspective to simulate the opponent's move
+            board.set_white_player((board.cur_player_num+1) % 2)
             op_actions = board.available_white_moves()
 
-            # initialize array of scores of all moves
+            # initialize array of scores of all opponent moves
             op_q = np.array()
 
-            # find scores of all moves
+            # find scores of all opponent moves
             for action in op_actions:
-                # calculates board state after move
+                # calculates board state after opponent move
                 op_state = board.__deepcopy__().apply_white_move(action).board_arr
 
-                # calculates the value of Qout in TF (using the
-                # inputs defined in feed_dict) and places it in allQ
+                # calculates the value of op_q in TF (using the
+                # inputs defined in feed_dict) and places it in op_q
                 op_q = np.concatenate(op_q, sess.run([self.Qout],
                                                      feed_dict={self.inputs1: op_state}))
 
-            # get index of best-scored move
+            # get index of best-scored opponent move
             op_a_opt = tf.argmax(allQ)[0]
+            # apply opponent's best move for use
             board.apply_white_move(op_actions[op_a_opt])
+
+            # switch the perspective back to our's
             board.set_white_player((board.cur_player_num+1)%2)
             predic_actions = board.available_white_moves()
 
