@@ -24,9 +24,10 @@ class Game:
         # flip the board so they current player is "white"
         self.board.set_white_player(player_num)
         while True:
-            available_moves = self.board.available_white_moves()
             # do a deep copy to allow for user manipulation
-            move_i = self.players[player_num](copy.deepcopy(self.board), available_moves)
+            move_i = self.players[player_num](copy.deepcopy(self.board))
+
+            available_moves = self.board.available_white_moves()
 
             if 0 <= move_i or move_i < len(available_moves):
                 self.board.apply_white_move(available_moves[move_i])

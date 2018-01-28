@@ -60,7 +60,7 @@ class QLearner(ABCMeta):
         #tensorflow things here
         pass
 
-    def step(self, board, apply_action):
+    def step(self, board):
         """
         Takes as input a state of the current problem
         and a set of actions. Also contains a transition function that
@@ -74,15 +74,13 @@ class QLearner(ABCMeta):
 
             sess.run(self.init)
 
-            state = board.state
-            actions = board.possible_moves()
+            actions = board.available_white_moves()
 
             a_opt = actions[0]
 
             # generates random action with probability epsilon
             if np.random.rand(1) < self.epsilon:
-                i = np.random.randint(0,len(actions),size=1)[0]
-                a_opt = actions[i]
+                a_opt = np.random.randint(0,len(actions),size=1)[0]
             else:
                 # initialize array of scores of all moves
                 allQ = np.array()
@@ -90,7 +88,7 @@ class QLearner(ABCMeta):
                 # find scores of all moves
                 for action in actions:
                     # calculates board state after move
-                    future_state, _ = apply_action(state, action)
+                    future_state = board.__deepcopy__().apply_white_move(action).board_arr
 
                     # calculates the value of Qout in TF (using the
                     # inputs defined in feed_dict) and places it in allQ
@@ -100,16 +98,13 @@ class QLearner(ABCMeta):
                 # get index of best-scored move
                 a_opt = tf.argmax(allQ)
                 # unpacks tensor a_opt
-                a_opt = actions(a_opt[0])
-
-            # TODO:
-            # can't make two consecutive moves, the opponent would have to
-            # make a move in between (maybe consider all opponent moves?)
+                a_opt = a_opt[0]
 
             # get new state and reward by executing preferred action
-            new_state, reward = apply_action(state, a_opt)
+            board, reward = simulate(board, a_opt)  # TODO: implement simulate()
 
-
+            board.set_white_player((board.cur_player_num+1)%2)
+            op_actions = board.available_white_moves()
 
 
             # initialize array of scores of all moves

@@ -70,7 +70,7 @@ class Board:
         return moves
 
     def won(self):
-        return self.winner() == -1
+        return self.winner() > -1
 
     def winner(self):
         """ Returns the winner of the game (player 1 or 2),
