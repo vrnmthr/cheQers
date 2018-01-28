@@ -92,14 +92,11 @@ class CheQer:
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
                 future_state.shape = (1, 64)
-                print(future_state.shape)
-                print(type(future_state.shape[0]))
-                print(self.inputs1)
-                print(self.Qout[0])
                 allQ[i] = sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
             # get index of best-scored move
-            a_opt = tf.argmax(allQ)[0]
+            a_opt = tf.argmax(allQ)
+            print(a_opt)
 
             # generates random action with probability epsilon
             if np.random.rand(1) < self.epsilon:
