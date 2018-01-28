@@ -91,10 +91,9 @@ class CheQer:
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
-                future_state.shape = (1, 64)
-                print(future_state.shape)
+
                 allQ = np.concatenate(allQ, sess.run([self.Qout],
-                                                     feed_dict={self.inputs1: future_state}))
+                                                     feed_dict={self.inputs1: future_state.reshape(self.inputs1.shape)}))
 
             # get index of best-scored move
             a_opt = tf.argmax(allQ)[0]
