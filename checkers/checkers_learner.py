@@ -95,8 +95,7 @@ class CheQer:
                 allQ[i] = sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
             # get index of best-scored move
-            a_opt = tf.argmax(allQ)
-            print(a_opt)
+            a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval()[0]
 
             # generates random action with probability epsilon
             if np.random.rand(1) < self.epsilon:
@@ -106,43 +105,47 @@ class CheQer:
             board, reward = self.simulate(board, actions[a_opt])
 
             # switch the perspective to simulate the opponent's move
-            board.set_white_player((board.cur_player_num+1) % 2)
+            board.set_white_player((board.cur_white_player+1) % 2)
             op_actions = board.available_white_moves()
 
             # initialize array of scores of all opponent moves
-            op_q = np.array()
+            op_q = np.zeros([len(op_actions)])
 
             # find scores of all opponent moves
-            for action in op_actions:
+            for i in range(len(op_actions)):
                 # calculates board state after opponent move
-                op_state = copy.deepcopy(board).apply_white_move(action).board_arr
+                op_state = copy.deepcopy(board)
+                op_state.apply_white_move(op_actions[i])
+                op_state = op_state.board_arr
 
                 # calculates the value of op_q in TF (using the
                 # inputs defined in feed_dict) and places it in op_q
-                op_q = np.concatenate(op_q, sess.run(self.Qout,
-                                                     feed_dict={self.inputs1: op_state}))
+                op_state.shape = (1, 64)
+                op_q[i] = sess.run(self.Qout, feed_dict={self.inputs1: op_state})
 
             # get index of best-scored opponent move
-            op_a_opt = tf.argmax(allQ)[0]
+            op_a_opt = tf.reshape(tf.argmax(op_q), [-1]).eval()[0]
             # apply opponent's best move for use
             board.apply_white_move(op_actions[op_a_opt])
 
             # switch the perspective back to our's
-            board.set_white_player((board.cur_player_num+1)%2)
+            board.set_white_player((board.cur_white_player+1)%2)
             predic_actions = board.available_white_moves()
 
             # initialize array of scores of all moves
-            predic_q = np.array()
+            predic_q = np.zeros([len(predic_actions)])
 
             # find scores of all moves
-            for action in predic_actions:
+            for i in range(len(predic_actions)):
                 # calculates board state after move
-                predic_state = copy.deepcopy(board).apply_white_move(action).board_arr
+                predic_state = copy.deepcopy(board)
+                predic_state.apply_white_move(predic_actions[i])
+                predic_state = predic_state.board_arr
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
-                predic_q = np.concatenate(predic_q, sess.run(self.Qout,
-                                                     feed_dict={self.inputs1: predic_state}))
+                predic_state.shape = (1, 64)
+                predic_q[i] = sess.run(self.Qout, feed_dict={self.inputs1: predic_state})
 
             # find maximum utility for new_state
             maxQ1 = np.max(predic_q)
