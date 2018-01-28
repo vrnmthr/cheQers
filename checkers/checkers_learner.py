@@ -40,7 +40,7 @@ class CheQer:
         self.updateModel = self.trainer.minimize(self.loss)
 
     @staticmethod
-    def simulate(board, a_opt):
+    def simulate(board, move):
         """
         Calculates reward, applies chosen move to board, then returns
         board.
@@ -51,7 +51,7 @@ class CheQer:
         """
         reward = 0
 
-        board.apply_white_move(a_opt)
+        board.apply_white_move(move)
         if board.cur_player_won() == 1:
             reward = 1
         elif board.cur_player_won() == 2:
@@ -91,9 +91,15 @@ class CheQer:
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
-
-                allQ = np.concatenate(allQ, sess.run([self.Qout],
-                                                     feed_dict={self.inputs1: future_state.reshape(self.inputs1.shape)}))
+                future_state = np.array(future_state, dtype=np.int)
+                future_state.shape = (1, 64)
+                print(future_state)
+                print(type(future_state.shape[0]))
+                print(self.inputs1)
+                allQ = np.concatenate(allQ, sess.run(self.Qout,
+                                                     feed_dict={self.inputs1: future_state}))
+                # np.array(future_state[0], dtype=np.float32)
+                a = 0
 
             # get index of best-scored move
             a_opt = tf.argmax(allQ)[0]
@@ -103,7 +109,7 @@ class CheQer:
                 a_opt = np.random.randint(0,len(actions),size=1)[0]
 
             # get new state and reward by executing preferred action
-            board, reward = simulate(board, actions[a_opt])
+            board, reward = self.simulate(board, actions[a_opt])
 
             # switch the perspective to simulate the opponent's move
             board.set_white_player((board.cur_player_num+1) % 2)
@@ -119,7 +125,7 @@ class CheQer:
 
                 # calculates the value of op_q in TF (using the
                 # inputs defined in feed_dict) and places it in op_q
-                op_q = np.concatenate(op_q, sess.run([self.Qout],
+                op_q = np.concatenate(op_q, sess.run(self.Qout,
                                                      feed_dict={self.inputs1: op_state}))
 
             # get index of best-scored opponent move
@@ -141,7 +147,7 @@ class CheQer:
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
-                predic_q = np.concatenate(predic_q, sess.run([self.Qout],
+                predic_q = np.concatenate(predic_q, sess.run(self.Qout,
                                                      feed_dict={self.inputs1: predic_state}))
 
             # find maximum utility for new_state
