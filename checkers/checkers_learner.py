@@ -83,23 +83,20 @@ class CheQer:
             allQ = np.zeros([len(actions)])
 
             # find scores of all moves
-            for action in actions:
+            for i in range(len(actions)):
                 # calculates board state after move
                 future_state = copy.deepcopy(board)
-                future_state.apply_white_move(action)
+                future_state.apply_white_move(actions[i])
                 future_state = future_state.board_arr
 
                 # calculates the value of Qout in TF (using the
                 # inputs defined in feed_dict) and places it in allQ
-                future_state = np.array(future_state, dtype=np.int)
                 future_state.shape = (1, 64)
-                print(future_state)
+                print(future_state.shape)
                 print(type(future_state.shape[0]))
                 print(self.inputs1)
-                allQ = np.concatenate(allQ, sess.run(self.Qout,
-                                                     feed_dict={self.inputs1: future_state}))
-                # np.array(future_state[0], dtype=np.float32)
-                a = 0
+                print(self.Qout[0])
+                allQ[i] = sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
             # get index of best-scored move
             a_opt = tf.argmax(allQ)[0]
