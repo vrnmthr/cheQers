@@ -150,8 +150,8 @@ class Piece(IntEnum):
 
                 # don't try to go backward to our old move start so we don't get in infinite recursion loops
                 if preceding_move is not None \
-                    and x == preceding_move.get_start()[0] \
-                    and y == preceding_move.get_start()[1]:
+                    and x == preceding_move.get_last_hop()[0] \
+                    and y == preceding_move.get_last_hop()[1]:
                     continue
 
                 # test if there is a different-colored piece between us

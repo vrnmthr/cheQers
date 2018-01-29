@@ -168,11 +168,11 @@ class Board:
             for x in range(-1, self.size):
                 # print opposite when at edge
                 if x == -1 and y == -1:
-                    buf.append("  ")
+                    buf.append("  |")
                 elif x == -1:
-                    buf.append("%d " % y)
+                    buf.append(" %d " % y)
                 elif y == -1:
-                    buf.append("%d " % x)
+                    buf.append("  %d " % x)
                 else:
                     # get piece here (possibly null)
                     this_piece = self.get_piece_at([x, y])
@@ -183,15 +183,17 @@ class Board:
                         # use to determine whether to continue and skip printing other things
                         move_found = False
 
+                        highest_move = 0
                         for i in range(len(possible_moves)):
                             move = possible_moves[i].get_end()
                             if move[0] == x and move[1] == y:
-                                # if one here, put the list index (one-indexed) here as a char
-                                buf.append("| %d " % i)
+                                highest_move = i
                                 move_found = True
 
-                        # if a move is found here, skip our other possible printings
+                        # if move(s) found, put the highest one here as a char
+                        # also, skip our other possible printings
                         if move_found:
+                            buf.append("|%2d " % highest_move)
                             continue
 
                     # if the piece at this location exists, print it with a bar for cosmetics
@@ -203,6 +205,5 @@ class Board:
                     else:
                         buf.append("|   ")
 
-                    buf.append(Piece.to_str(self.get_piece_at([x, y])))
-            buf.append("\n")
+            buf.append("|\n")
         return "".join(buf)
