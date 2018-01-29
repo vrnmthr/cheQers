@@ -56,7 +56,7 @@ class CheQer:
         self.train_step = 0
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
-        # restore saved graph + variables
+        # restore saved graph + variables - https://www.tensorflow.org/programmers_guide/saved_model
         file = tf.train.latest_checkpoint(self.SAVE_DIREC)
         if file is not None:
             print("Loading model from %s" % file)
@@ -151,6 +151,7 @@ class CheQer:
         # get new state and reward by executing preferred action
         board, reward = self.simulate(board, actions[a_opt])
 
+        maxQ1 = 0
         if not reward:
             # switch the perspective to simulate the opponent's move
             board.set_white_player((board.cur_white_player+1) % 2)

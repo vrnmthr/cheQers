@@ -31,3 +31,9 @@ class Game:
             if 0 <= move_i or move_i < len(available_moves):
                 self.board.apply_white_move(available_moves[move_i])
                 return
+
+    @staticmethod
+    def clear_screen():
+        """  Clears the terminal screen """
+        # see http://stackoverflow.com/a/32008479/3155372
+        print("\033[2J\033[1;1H")

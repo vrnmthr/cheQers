@@ -33,7 +33,7 @@ class Piece(IntEnum):
     @staticmethod
     def is_king(board, coords):
         piece_val = board.get_piece_at(coords)
-        return piece_val is Piece.WHITE_K or piece_val is Piece.BLACK_K
+        return piece_val == Piece.WHITE_K or piece_val == Piece.BLACK_K
 
     @staticmethod
     def check_if_should_be_king(board, coords):
@@ -62,7 +62,7 @@ class Piece(IntEnum):
 
         # if at far edge as normal piece,
         # stop looking for moves (we'll be kinged, so the turn is over)
-        if is_king and piece_y == board.size - 1:
+        if not is_king and piece_y == board.size - 1:
             return []
 
         # change y endpoints based on color=direction of movement

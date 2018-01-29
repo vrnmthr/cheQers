@@ -160,9 +160,49 @@ class Board:
         return x < 0 or x >= self.size or y < 0 or y >= self.size
 
     def __str__(self):
+        return self.board_str([])
+
+    def board_str(self, possible_moves):
         buf = []
-        for y in range(self.size):
-            for x in range(self.size):
-                buf.append(Piece.to_str(self.get_piece_at([x, y])))
+        for y in range(-1, self.size):
+            for x in range(-1, self.size):
+                # print opposite when at edge
+                if x == -1 and y == -1:
+                    buf.append("  ")
+                elif x == -1:
+                    buf.append("%d " % y)
+                elif y == -1:
+                    buf.append("%d " % x)
+                else:
+                    # get piece here (possibly null)
+                    this_piece = self.get_piece_at([x, y])
+
+                    # if there are any, loop over the possible moves
+                    # and see if any end at this space
+                    if len(possible_moves) > 0:
+                        # use to determine whether to continue and skip printing other things
+                        move_found = False
+
+                        for i in range(len(possible_moves)):
+                            move = possible_moves[i].get_end()
+                            if move[0] == x and move[1] == y:
+                                # if one here, put the list index (one-indexed) here as a char
+                                buf.append("| %d " % i)
+                                move_found = True
+
+                        # if a move is found here, skip our other possible printings
+                        if move_found:
+                            continue
+
+                    # if the piece at this location exists, print it with a bar for cosmetics
+                    if this_piece != Piece.NONE:
+                        buf.append("| %s" % Piece.to_str(this_piece))
+                    # print out dots (black places) at checkerboard spaces
+                    elif self.is_checkboard_space(x, y):
+                        buf.append("| . ")
+                    else:
+                        buf.append("|   ")
+
+                    buf.append(Piece.to_str(self.get_piece_at([x, y])))
             buf.append("\n")
         return "".join(buf)
