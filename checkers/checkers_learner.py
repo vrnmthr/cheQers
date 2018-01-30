@@ -32,12 +32,6 @@ class CheQer:
         self.inputs1, self.Qout, self.weights, self.biases = self.build_mlp(hidden_dims)
         self.init = tf.global_variables_initializer()
 
-        # result of next Q values used in Bellman update equation
-        self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
-        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
-        self.trainer = tf.train.GradientDescentOptimizer(alpha)
-        self.updateModel = self.trainer.minimize(self.loss)
-
         self.train_step = 0
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
@@ -45,7 +39,14 @@ class CheQer:
         file = tf.train.latest_checkpoint(self.SAVE_DIREC)
         if file is not None:
             print("Loading model from %s" % file)
+            self.saver = tf.train.import_meta_graph(self.SAVE_FILE + ".meta")
             self.saver.restore(self.sess, file)
+
+        # result of next Q values used in Bellman update equation
+        self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
+        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
+        self.trainer = tf.train.GradientDescentOptimizer(alpha)
+        self.updateModel = self.trainer.minimize(self.loss)
 
     def __del__(self):
         print("Saving model to %s" % self.SAVE_FILE)
@@ -115,7 +116,7 @@ class CheQer:
         state.shape = (1, 64)
 
         # Train our network using target and predicted Q values
-        _,_ = self.sess.run([self.updateModel, self.loss],
+        _, _ = self.sess.run([self.updateModel, self.loss],
             feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
     def find_optimal_move(self, board):
