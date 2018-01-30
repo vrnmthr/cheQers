@@ -5,7 +5,7 @@ def make_human_player(name):
         Game.clear_screen()
         print("\n\nPlayer %s" % name)
         print("The current state of the board is:")
-        print(board)
+        print(board.board_str(move_choices))
         print("Your available moves are:")
         for i in range(len(move_choices)):
             print("%d: %s" % (i, move_choices[i]))
