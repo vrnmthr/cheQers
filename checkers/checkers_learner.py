@@ -17,7 +17,7 @@ class CheQer:
         dim = dimension of vector describing state
         epsilon = chance of not following greedy action
         """
-        self.SAVE_STEP_NUM = 100  # modulus of steps to save
+        self.SAVE_STEP_NUM = 5000  # modulus of steps to save
         self.SAVE_DIREC = "./models/"
         self.SAVE_FILE = self.SAVE_DIREC + "checkers-model.ckpt"
         self.Lambda = Lambda
@@ -29,7 +29,7 @@ class CheQer:
         tf.reset_default_graph()
 
         # create model
-        self.inputs1, self.Qout = self.build_mlp(hidden_dims)
+        self.inputs1, self.Qout, self.weights, self.biases = self.build_mlp(hidden_dims)
         self.init = tf.global_variables_initializer()
 
         # result of next Q values used in Bellman update equation
@@ -52,7 +52,8 @@ class CheQer:
         self.saver.save(self.sess, self.SAVE_FILE)
         self.sess.close()
 
-    def build_mlp(self, hidden_dimensions):
+    @staticmethod
+    def build_mlp(hidden_dimensions):
         """
         Must provide at least one hidden layer dimension
 
@@ -64,21 +65,24 @@ class CheQer:
 
         inputs = tf.placeholder(tf.float32, shape=[1, 64])
 
-        first_layer_weights = tf.get_variable("input_weights", [64, hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
-        first_layer_bias = tf.get_variable("input_bias", [hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        weights = [None] * (hidden_layer_count + 1)
+        biases = [None] * (hidden_layer_count + 1)
 
-        output = tf.add(tf.matmul(inputs, first_layer_weights), first_layer_bias)
+        weights[0] = tf.get_variable("input_weights", [64, hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        biases[0] = tf.get_variable("input_bias", [hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+
+        output = tf.add(tf.matmul(inputs, weights[0]), biases[0])
 
         for i in range(hidden_layer_count):
             dim = 1
             if not i+1 == hidden_layer_count:
                 dim = hidden_dimensions[i + 1]
-            weights = tf.get_variable("weights_" + str(i), [hidden_dimensions[i], dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
-            bias = tf.get_variable("bias_" + str(i), [1, dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+            weights[i + 1] = tf.get_variable("weights_" + str(i), [hidden_dimensions[i], dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+            biases[i + 1] = tf.get_variable("bias_" + str(i), [1, dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
 
-            output = tf.add(tf.matmul(output, weights), bias)
+            output = tf.add(tf.matmul(output, weights[i+1]), biases[i+1])
 
-        return inputs, output
+        return inputs, output, weights, biases
 
     @staticmethod
     def simulate(board, move):
@@ -203,4 +207,5 @@ class CheQer:
         return a_opt
 
     def print_info(self):
-        print("Weights:\n%s" % self.weights.eval(session=self.sess))
+        print("Biases:\n%s" % self.biases[len(self.hidden_dims)].eval(session=self.sess))
+        print("Weights:\n%s" % self.weights[len(self.hidden_dims)].eval(session=self.sess))
