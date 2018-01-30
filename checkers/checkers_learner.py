@@ -48,6 +48,9 @@ class CheQer:
         self.trainer = tf.train.GradientDescentOptimizer(alpha)
         self.updateModel = self.trainer.minimize(self.loss)
 
+        # finalize structure
+        tf.get_default_graph().finalize()
+
     def __del__(self):
         print("Saving model to %s" % self.SAVE_FILE)
         self.saver.save(self.sess, self.SAVE_FILE)
