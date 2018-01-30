@@ -10,7 +10,7 @@ class CheQer:
     Abstract base class defining generalized Q-learning algorithm
     """
 
-    def __init__(self, Lambda, epsilon, dims, alpha = 0.1):
+    def __init__(self, Lambda, epsilon, hidden_dims, alpha = 0.1):
         """
         Lambda = discount factor
         alpha = learning rate
@@ -23,29 +23,14 @@ class CheQer:
         self.Lambda = Lambda
         self.alpha = alpha
         self.epsilon = epsilon
-        self.dims = dims
+        self.hidden_dims = hidden_dims
 
         # sets up the network
         tf.reset_default_graph()
 
-        # first layer of inputs
-        self.inputs1 = tf.placeholder(tf.float32, shape=[1, dims[0]])
-
-        # store max index of dims
-        dimlen = len(dims) - 1
-
-        # weights for network
-        self.weights = [None] * 10
-        for i in range(dimlen):
-            print(i)
-            self.weights[i] = tf.get_variable("weights" + str(i), [dims[i], dims[i+1]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
-        self.weights[dimlen] = tf.get_variable("weights" + str(dimlen), [dims[dimlen], 1], dtype=tf.float32, initializer=tf.random_uniform_initializer)
-
+        # create model
+        self.inputs1, self.Qout = self.build_mlp(hidden_dims)
         self.init = tf.global_variables_initializer()
-        # result of computation
-        self.Qout = tf.matmul(self.inputs1, self.weights[0])
-        for i in range(dimlen):
-            self.Qout = tf.matmul(self.Qout, self.weights[i+1])
 
         # result of next Q values used in Bellman update equation
         self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
@@ -66,6 +51,34 @@ class CheQer:
         print("Saving model to %s" % self.SAVE_FILE)
         self.saver.save(self.sess, self.SAVE_FILE)
         self.sess.close()
+
+    def build_mlp(self, hidden_dimensions):
+        """
+        Must provide at least one hidden layer dimension
+
+        :param hidden_dimensions: A list of ints with at least one element. All elements must be greater than zero.
+        :return:
+        """
+        hidden_layer_count = len(hidden_dimensions)
+        assert hidden_layer_count > 0
+
+        inputs = tf.placeholder(tf.float32, shape=[1, 64])
+
+        first_layer_weights = tf.get_variable("input_weights", [64, hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        first_layer_bias = tf.get_variable("input_bias", [hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+
+        output = tf.add(tf.matmul(inputs, first_layer_weights), first_layer_bias)
+
+        for i in range(hidden_layer_count):
+            dim = 1
+            if not i+1 == hidden_layer_count:
+                dim = hidden_dimensions[i + 1]
+            weights = tf.get_variable("weights_" + str(i), [hidden_dimensions[i], dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+            bias = tf.get_variable("bias_" + str(i), [1, dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+
+            output = tf.add(tf.matmul(output, weights), bias)
+
+        return inputs, output
 
     @staticmethod
     def simulate(board, move):
@@ -98,10 +111,8 @@ class CheQer:
         state.shape = (1, 64)
 
         # Train our network using target and predicted Q values
-        dimlen = len(self.dims) - 1
-        for i in range(dimlen):
-            _,_ = self.sess.run([self.updateModel,self.weights],
-                feed_dict={self.inputs1:state,self.nextQ:targetQ})
+        _,_ = self.sess.run([self.updateModel, self.loss],
+            feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
     def find_optimal_move(self, board):
 
