@@ -10,48 +10,27 @@ class CheQer:
     Abstract base class defining generalized Q-learning algorithm
     """
 
-    def __init__(self, Lambda, epsilon, dims, alpha = 0.1):
+    def __init__(self, Lambda, epsilon, hidden_dims, alpha = 0.1):
         """
         Lambda = discount factor
         alpha = learning rate
         dim = dimension of vector describing state
         epsilon = chance of not following greedy action
         """
-        self.SAVE_STEP_NUM = 100  # modulus of steps to save
+        self.SAVE_STEP_NUM = 5000  # modulus of steps to save
         self.SAVE_DIREC = "./models/"
         self.SAVE_FILE = self.SAVE_DIREC + "checkers-model.ckpt"
         self.Lambda = Lambda
         self.alpha = alpha
         self.epsilon = epsilon
-        self.dims = dims
+        self.hidden_dims = hidden_dims
 
         # sets up the network
         tf.reset_default_graph()
 
-        # first layer of inputs
-        self.inputs1 = tf.placeholder(tf.float32, shape=[1, dims[0]])
-
-        # store max index of dims
-        dimlen = len(dims) - 1
-
-        # weights for network
-        self.weights = [None] * 10
-        for i in range(dimlen):
-            print(i)
-            self.weights[i] = tf.get_variable("weights" + str(i), [dims[i], dims[i+1]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
-        self.weights[dimlen] = tf.get_variable("weights" + str(dimlen), [dims[dimlen], 1], dtype=tf.float32, initializer=tf.random_uniform_initializer)
-
+        # create model
+        self.inputs1, self.Qout, self.weights, self.biases = self.build_mlp(hidden_dims)
         self.init = tf.global_variables_initializer()
-        # result of computation
-        self.Qout = tf.matmul(self.inputs1, self.weights[0])
-        for i in range(dimlen):
-            self.Qout = tf.matmul(self.Qout, self.weights[i+1])
-
-        # result of next Q values used in Bellman update equation
-        self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
-        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
-        self.trainer = tf.train.GradientDescentOptimizer(alpha)
-        self.updateModel = self.trainer.minimize(self.loss)
 
         self.train_step = 0
         self.sess = tf.Session()
@@ -60,12 +39,54 @@ class CheQer:
         file = tf.train.latest_checkpoint(self.SAVE_DIREC)
         if file is not None:
             print("Loading model from %s" % file)
+            self.saver = tf.train.import_meta_graph(self.SAVE_FILE + ".meta")
             self.saver.restore(self.sess, file)
+
+        # result of next Q values used in Bellman update equation
+        self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
+        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
+        self.trainer = tf.train.GradientDescentOptimizer(alpha)
+        self.updateModel = self.trainer.minimize(self.loss)
+
+        # finalize structure
+        tf.get_default_graph().finalize()
 
     def __del__(self):
         print("Saving model to %s" % self.SAVE_FILE)
         self.saver.save(self.sess, self.SAVE_FILE)
         self.sess.close()
+
+    @staticmethod
+    def build_mlp(hidden_dimensions):
+        """
+        Must provide at least one hidden layer dimension
+
+        :param hidden_dimensions: A list of ints with at least one element. All elements must be greater than zero.
+        :return:
+        """
+        hidden_layer_count = len(hidden_dimensions)
+        assert hidden_layer_count > 0
+
+        inputs = tf.placeholder(tf.float32, shape=[1, 64])
+
+        weights = [None] * (hidden_layer_count + 1)
+        biases = [None] * (hidden_layer_count + 1)
+
+        weights[0] = tf.get_variable("input_weights", [64, hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+        biases[0] = tf.get_variable("input_bias", [hidden_dimensions[0]], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+
+        output = tf.add(tf.matmul(inputs, weights[0]), biases[0])
+
+        for i in range(hidden_layer_count):
+            dim = 1
+            if not i+1 == hidden_layer_count:
+                dim = hidden_dimensions[i + 1]
+            weights[i + 1] = tf.get_variable("weights_" + str(i), [hidden_dimensions[i], dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+            biases[i + 1] = tf.get_variable("bias_" + str(i), [1, dim], dtype=tf.float32, initializer=tf.random_uniform_initializer)
+
+            output = tf.add(tf.matmul(output, weights[i+1]), biases[i+1])
+
+        return inputs, output, weights, biases
 
     @staticmethod
     def simulate(board, move):
@@ -98,13 +119,10 @@ class CheQer:
         state.shape = (1, 64)
 
         # Train our network using target and predicted Q values
-        dimlen = len(self.dims) - 1
-        for i in range(dimlen):
-            _,_ = self.sess.run([self.updateModel,self.weights],
-                feed_dict={self.inputs1:state,self.nextQ:targetQ})
+        _, _ = self.sess.run([self.updateModel, self.loss],
+            feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
     def find_optimal_move(self, board):
-
         actions = board.available_white_moves()
 
         # initialize array of scores of all moves
@@ -123,9 +141,21 @@ class CheQer:
             allQ[i] = self.sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
         # get index of best-scored move
-        a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval(session=self.sess)[0]
+        a_opt = self.argmax(allQ)
 
         return a_opt, allQ
+
+    @staticmethod
+    def argmax(num_list):
+        cur_max = num_list[0]
+        max_index = 0
+        for i in range(len(num_list)):
+            cur_val = num_list[i]
+            if cur_val > cur_max:
+                cur_max = cur_val
+                max_index = i
+        return max_index
+
 
     def step(self, board, possible_moves):
         """
@@ -192,4 +222,5 @@ class CheQer:
         return a_opt
 
     def print_info(self):
-        print("Weights:\n%s" % self.weights.eval(session=self.sess))
+        print("Biases:\n%s" % self.biases[len(self.hidden_dims)].eval(session=self.sess))
+        print("Weights:\n%s" % self.weights[len(self.hidden_dims)].eval(session=self.sess))

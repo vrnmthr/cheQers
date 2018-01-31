@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 from enum import IntEnum
 from move import Move
