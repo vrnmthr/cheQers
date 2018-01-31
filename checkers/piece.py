@@ -172,7 +172,7 @@ class Piece(IntEnum):
                             b_break = True
                             break
                     if b_break:
-                        logging.info("Prevented a disaster!")
+                        logging.info("Infinite Loop")
                         break
 
                     # in which case, add a move here, and note that it is a jump (we may be following some other jumps)

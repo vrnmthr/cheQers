@@ -3,8 +3,10 @@ from game import Game
 from checkers_learner import CheQer
 from human_player import make_human_player
 import win_unicode_console as wuc
+import logging
 
 wuc.enable()
+logging.basicConfig(filename="log.log")
 
 checkers_ai = CheQer(.75, .1, [50, 35, 20, 4], .00000001)
 
