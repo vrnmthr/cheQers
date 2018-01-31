@@ -6,6 +6,14 @@ https://medium.com/emergent-future/simple-reinforcement-learning-with-tensorflow
 https://arxiv.org/pdf/1509.01549.pdf
 
 # ToDo
+## Bugfixes:
+- It assumes it is one player and as such cannot learn from playing against itself (I think...)
+- Every time it runs, when it loads the model, the session stores both the newly created model and the loaded model so the save file size increases by the initial file size each time it is run
+
+## Priority
+- (Currently none)
+
+## Long Term
 - Generalize Q_Learner back to a generic Q_learner like Varun intended, adding the checkers_ai as a subclass
   - Or at least generalize so it takes in a model, loss function, and update function (and input and output shape/size) so it can run with any network compatible to checkers
   - Build a separation layer between checkers and Q_learner if doing generalized implementation rather than abstract class
