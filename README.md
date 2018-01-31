@@ -8,10 +8,13 @@ https://arxiv.org/pdf/1509.01549.pdf
 # ToDo
 ## Bugfixes:
 - It assumes it is one player and as such cannot learn from playing against itself (I think...)
+  - see Priority
 - Every time it runs, when it loads the model, the session stores both the newly created model and the loaded model so the save file size increases by the initial file size each time it is run
 
 ## Priority
-- (Currently none)
+- Add init option for self-training
+  - If not self training, learn 2 steps deep
+  - If self training, learn 1 step deep and treat the middle step as opponent move (because it is be in this case)
 
 ## Long Term
 - Generalize Q_Learner back to a generic Q_learner like Varun intended, adding the checkers_ai as a subclass
