@@ -24,9 +24,15 @@ class CheQer:
         self.alpha = alpha
         self.epsilon = epsilon
         self.hidden_dims = hidden_dims
+        self.old_state = None
+        self.old_reward = 0
+        self.first_step = True
 
         # sets up the network
         tf.reset_default_graph()
+
+        # placeholder for old Q value for training
+        self.placeholder_q = tf.placeholder(tf.float32, shape=[1, 1])
 
         # create model
         self.inputs1, self.Qout, self.weights, self.biases = self.build_mlp(hidden_dims)
@@ -43,8 +49,7 @@ class CheQer:
             self.saver.restore(self.sess, file)
 
         # result of next Q values used in Bellman update equation
-        self.nextQ = tf.placeholder(tf.float32,shape=[1,1])
-        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
+        self.loss = tf.reduce_sum(tf.square(self.placeholder_q - self.Qout))
         self.trainer = tf.train.GradientDescentOptimizer(alpha)
         self.updateModel = self.trainer.minimize(self.loss)
 
@@ -95,8 +100,8 @@ class CheQer:
         board.
 
         :param board: the board
-        :param a_opt: index of chosen move
-        :return: the board, now with a_opt's move applied. Also the reward.
+        :param move: chosen move
+        :return: the board, now with move applied. Also the reward.
         """
         reward = 0
 
@@ -110,17 +115,23 @@ class CheQer:
 
         return board, reward
 
-    def train(self, state, reward, maxQ1):
+    def train(self, state, reward, cur_q):
         # implements temporal difference equation by updating the
         # score of the action we picked in targetQ. Everything else
         # stays the same so is unaffected
-        targetQ = np.array(reward + self.Lambda*maxQ1)
-        targetQ.shape = (1, 1)
-        state.shape = (1, 64)
+        if reward:
+            cur_q = reward
+        if self.old_state is not None:
+            targetQ = np.array(self.old_reward + self.Lambda*cur_q)
+            targetQ.shape = (1, 1)
+            self.old_state.shape = (1, 64)
 
-        # Train our network using target and predicted Q values
-        _, _ = self.sess.run([self.updateModel, self.loss],
-            feed_dict={self.inputs1:state,self.nextQ:targetQ})
+            # Train our network using target and predicted Q values
+            _, _ = self.sess.run([self.updateModel, self.loss],
+                feed_dict={self.inputs1: self.old_state, self.placeholder_q: targetQ})
+
+        self.old_state = state
+        self.old_reward = reward
 
     def find_optimal_move(self, board):
         actions = board.available_white_moves()
@@ -156,7 +167,6 @@ class CheQer:
                 max_index = i
         return max_index
 
-
     def step(self, board, possible_moves):
         """
         Takes as input a state of the current problem
@@ -181,38 +191,10 @@ class CheQer:
         # get new state and reward by executing preferred action
         board, reward = self.simulate(board, actions[a_opt])
 
-        maxQ1 = 0
-        if not reward:
-            # switch the perspective to simulate the opponent's move
-            board.set_white_player((board.cur_white_player+1) % 2)
-            op_actions = board.available_white_moves()
-
-            op_a_opt, op_q = self.find_optimal_move(board)
-
-            # apply opponent's best move for use
-            board, rew = self.simulate(board, op_actions[op_a_opt])
-
-            if not rew:
-                # switch the perspective back to our's
-                board.set_white_player((board.cur_white_player+1)%2)
-                predic_actions = board.available_white_moves()
-
-                predic_a_opt, predic_q = self.find_optimal_move(board)
-
-                _, rew2 = self.simulate(board, predic_actions[predic_a_opt])
-                # find maximum utility for new_state
-                if rew2:
-                    maxQ1 = rew2
-                else:
-                    maxQ1 = np.max(predic_q)
-            elif rew == -.25:
-                maxQ1 = rew
-            else:
-                maxQ1 = -1 * rew
+        if self.first_step:
+            self.first_step = False
         else:
-            maxQ1 = reward
-
-        self.train(state, reward, maxQ1)
+            self.train(state, reward, allQ[a_opt])
 
         # save some subset of networks
         if self.train_step % self.SAVE_STEP_NUM == 0:
