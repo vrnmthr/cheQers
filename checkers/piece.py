@@ -2,6 +2,7 @@
 #!/usr/bin/python
 from enum import IntEnum
 from move import Move
+import logging
 
 class Piece(IntEnum):
     BLACK_K =   -2
@@ -97,12 +98,12 @@ class Piece(IntEnum):
 
         # after we've checked all normal moves, look for and add all possible jumps
         # (recursively as well - I mean ALL jumps)
-        possible_jumps = Piece.get_all_possible_jumps(board, coords, None, is_white, is_king)
+        possible_jumps = Piece.get_all_possible_jumps(board, coords, None, [], is_white, is_king)
         moves.extend(possible_jumps)
         return moves
 
     @staticmethod
-    def get_all_possible_jumps(board, coords, preceding_move, is_white, is_king):
+    def get_all_possible_jumps(board, coords, preceding_move, jumped_coords, is_white, is_king):
         """  Finds all jumping moves originating from this piece.
         Does this recursively; for each move a new imaginary piece will be generated,
         and this function will then be called on that piece to find all possible subsequent moves.
@@ -158,10 +159,21 @@ class Piece(IntEnum):
                 # test if there is a different-colored piece between us
                 # (at the average of our position) and the starting point
                 # AND that there's no piece in the planned landing space (meaning we can possible jump there)
-                between_piece = board.get_piece_at([int((piece_x + x)/2) , int((piece_y + y)/2)])
+                between_coords = [int((piece_x + x)/2), int((piece_y + y)/2)]
+                between_piece = board.get_piece_at(between_coords)
                 if between_piece != Piece.NONE \
                     and Piece.is_white_val(between_piece) != is_white \
                     and board.get_piece_at([x, y]) == Piece.NONE:
+
+                    # check if the targeted piece has already been jumped in this jump sequence
+                    b_break = False
+                    for j_coords in jumped_coords:
+                        if between_coords == j_coords:
+                            b_break = True
+                            break
+                    if b_break:
+                        logging.info("Prevented a disaster!")
+                        break
 
                     # in which case, add a move here, and note that it is a jump (we may be following some other jumps)
                     # (origin points are absolute origin (ORIGINAL piece))
@@ -170,9 +182,11 @@ class Piece(IntEnum):
 
                     # after jumping, create an imaginary piece as if it was there to look for more jumps
                     imaginary_piece = [x, y]
+                    # add the jumped piece to jumped_pieces
+                    jumped_coords.append(between_coords)
                     # find possible subsequent moves recursively
                     subsequent_moves = Piece.get_all_possible_jumps(board,
-                        imaginary_piece, jumping_move, is_white, is_king)
+                        imaginary_piece, jumping_move, jumped_coords, is_white, is_king)
 
                     # add these moves to our list if they exist, otherwise just move on to other possibilities
                     moves.extend(subsequent_moves)

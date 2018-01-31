@@ -17,7 +17,7 @@ class CheQer:
         dim = dimension of vector describing state
         epsilon = chance of not following greedy action
         """
-        self.SAVE_STEP_NUM = 5000  # modulus of steps to save
+        self.SAVE_STEP_NUM = 100000  # modulus of steps to save (100,000 currently)
         self.SAVE_DIREC = "./models/"
         self.SAVE_FILE = self.SAVE_DIREC + "checkers-model.ckpt"
         self.Lambda = Lambda
@@ -31,12 +31,12 @@ class CheQer:
         # sets up the network
         tf.reset_default_graph()
 
-        # placeholder for old Q value for training
-        self.placeholder_q = tf.placeholder(tf.float32, shape=[1, 1])
-
         # create model
         self.inputs1, self.Qout, self.weights, self.biases = self.build_mlp(hidden_dims)
         self.init = tf.global_variables_initializer()
+
+        # placeholder for old Q value for training
+        self.placeholder_q = tf.placeholder(tf.float32, shape=[1, 1])
 
         self.train_step = 0
         self.sess = tf.Session()
