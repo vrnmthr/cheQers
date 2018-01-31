@@ -13,7 +13,7 @@ player1 = checkers_ai.step if train else make_human_player("Human")
 player2 = checkers_ai.step
 
 try:
-    for i in range(1000000):
+    for i in range(10000):
         print("Winner of game ", i, ": ", Game(player1, player2).run())
         print("Current save step: ", checkers_ai.train_step % checkers_ai.SAVE_STEP_NUM)
 

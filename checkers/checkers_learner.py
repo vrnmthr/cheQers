@@ -123,7 +123,6 @@ class CheQer:
             feed_dict={self.inputs1:state,self.nextQ:targetQ})
 
     def find_optimal_move(self, board):
-
         actions = board.available_white_moves()
 
         # initialize array of scores of all moves
@@ -142,9 +141,21 @@ class CheQer:
             allQ[i] = self.sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
         # get index of best-scored move
-        a_opt = tf.reshape(tf.argmax(allQ), [-1]).eval(session=self.sess)[0]
+        a_opt = self.argmax(allQ)
 
         return a_opt, allQ
+
+    @staticmethod
+    def argmax(num_list):
+        cur_max = num_list[0]
+        max_index = 0
+        for i in range(len(num_list)):
+            cur_val = num_list[i]
+            if cur_val > cur_max:
+                cur_max = cur_val
+                max_index = i
+        return max_index
+
 
     def step(self, board, possible_moves):
         """
