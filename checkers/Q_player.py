@@ -8,7 +8,7 @@ import logging
 wuc.enable()
 logging.basicConfig(filename="log.log")
 
-checkers_ai = CheQer(.75, .1, [50, 35, 20, 4], .00000001)
+checkers_ai = CheQer(.85, .3, [50, 35, 20, 4], alpha=.05)
 
 train = True
 player1 = checkers_ai.step if train else make_human_player("Human")
