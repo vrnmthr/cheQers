@@ -10,7 +10,7 @@ class CheQer:
     Abstract base class defining generalized Q-learning algorithm
     """
 
-    def __init__(self, Lambda, epsilon, hidden_dims, alpha = 0.1):
+    def __init__(self, Lambda, epsilon, hidden_dims, alpha = 0.1, self_training=True):
         """
         Lambda = discount factor
         alpha = learning rate
@@ -19,14 +19,13 @@ class CheQer:
         """
         self.SAVE_STEP_NUM = 100000  # modulus of steps to save (100,000 currently)
         self.SAVE_DIREC = "./models/"
-        self.SAVE_FILE = self.SAVE_DIREC + "checkers-model.ckpt"
+        self.SAVE_FILE = self.SAVE_DIREC + "checkers-model"
         self.Lambda = Lambda
         self.alpha = alpha
         self.epsilon = epsilon
         self.hidden_dims = hidden_dims
-        self.old_state = None
-        self.old_reward = 0
-        self.first_step = True
+        self.self_training = self_training
+        self.old_state = [None] * (2 if self_training else 1)
 
         # sets up the network
         tf.reset_default_graph()
@@ -47,6 +46,8 @@ class CheQer:
             print("Loading model from %s" % file)
             self.saver = tf.train.import_meta_graph(self.SAVE_FILE + ".meta")
             self.saver.restore(self.sess, file)
+
+        self.sess.run(self.init)
 
         # result of next Q values used in Bellman update equation
         self.loss = tf.reduce_sum(tf.square(self.placeholder_q - self.Qout))
@@ -115,29 +116,25 @@ class CheQer:
 
         return board, reward
 
-    def train(self, state, reward, cur_q):
+    def train(self, reward, cur_q):
         # implements temporal difference equation by updating the
-        # score of the action we picked in targetQ. Everything else
+        # score of the action we picked in target_q. Everything else
         # stays the same so is unaffected
-        if reward:
-            cur_q = reward
-        if self.old_state is not None:
-            targetQ = np.array(self.old_reward + self.Lambda*cur_q)
-            targetQ.shape = (1, 1)
-            self.old_state.shape = (1, 64)
+        old_state = self.old_state[1 if self.self_training else 0]
+        if old_state is not None:
+            target_q = np.array(reward + self.Lambda*cur_q)
+            target_q.shape = (1, 1)
+            old_state.shape = (1, 64)
 
             # Train our network using target and predicted Q values
             _, _ = self.sess.run([self.updateModel, self.loss],
-                feed_dict={self.inputs1: self.old_state, self.placeholder_q: targetQ})
-
-        self.old_state = state
-        self.old_reward = reward
+                feed_dict={self.inputs1: old_state, self.placeholder_q: target_q})
 
     def find_optimal_move(self, board):
         actions = board.available_white_moves()
 
         # initialize array of scores of all moves
-        allQ = np.zeros([len(actions)])
+        all_q = np.zeros([len(actions)])
 
         # find scores of all moves
         for i in range(len(actions)):
@@ -147,14 +144,14 @@ class CheQer:
             future_state = future_state.board_arr
 
             # calculates the value of Qout in TF (using the
-            # inputs defined in feed_dict) and places it in allQ
+            # inputs defined in feed_dict) and places it in all_q
             future_state.shape = (1, 64)
-            allQ[i] = self.sess.run(self.Qout, feed_dict={self.inputs1: future_state})
+            all_q[i] = self.sess.run(self.Qout, feed_dict={self.inputs1: future_state})
 
         # get index of best-scored move
-        a_opt = self.argmax(allQ)
+        a_opt = self.argmax(all_q)
 
-        return a_opt, allQ
+        return a_opt, all_q
 
     @staticmethod
     def argmax(num_list):
@@ -175,9 +172,6 @@ class CheQer:
         Returns the optimal action for the given state
         and updates the backing neural net.
         """
-
-        self.sess.run(self.init)
-
         # Store the "base" state before board gets modified
         state = board.board_arr
         actions = board.available_white_moves()
@@ -191,15 +185,16 @@ class CheQer:
         # get new state and reward by executing preferred action
         board, reward = self.simulate(board, actions[a_opt])
 
-        if self.first_step:
-            self.first_step = False
-        else:
-            self.train(state, reward, allQ[a_opt])
+        self.train(reward, allQ[a_opt])
 
         # save some subset of networks
         if self.train_step % self.SAVE_STEP_NUM == 0:
             self.saver.save(self.sess, self.SAVE_FILE)
         self.train_step += 1
+
+        if self.self_training:
+            self.old_state[1] = self.old_state[0]
+        self.old_state[0] = state
 
         return a_opt
 

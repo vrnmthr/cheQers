@@ -2,6 +2,8 @@
 
 import copy
 from board import Board
+import time
+
 
 class Game:
     def __init__(self, player1move, player2move):
@@ -17,6 +19,10 @@ class Game:
             self.get_player_move(player_num)
             # alternate players
             player_num = (player_num + 1) % 2
+            if player_num == 0:
+                print(self.board)
+
+        time.sleep(1)
 
         return self.board.winner()
 

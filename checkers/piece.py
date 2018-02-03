@@ -100,7 +100,12 @@ class Piece(IntEnum):
         # (recursively as well - I mean ALL jumps)
         possible_jumps = Piece.get_all_possible_jumps(board, coords, None, [], is_white, is_king)
         moves.extend(possible_jumps)
-        return moves
+        
+        # if any jumps are available, only jumps are allowed
+        if len(possible_jumps) > 0:
+            return [move for move in moves if move.is_jump]
+        else:
+            return moves
 
     @staticmethod
     def get_all_possible_jumps(board, coords, preceding_move, jumped_coords, is_white, is_king):
